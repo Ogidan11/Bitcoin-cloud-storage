@@ -124,3 +124,63 @@
     (ok true)
   )
 )
+
+
+(define-public (grant-permission (file-id uint) (permission bool) (recipient principal))
+  (let
+    (
+      (file (unwrap! (map-get? files { file-id: file-id }) err-not-found))
+    )
+    ;; Check if file-id is valid (greater than 0 and less than or equal to total-files)
+    (asserts! (and (> file-id u0) (<= file-id (var-get total-files))) err-not-found)
+
+    ;; Ensure the caller is the file's owner
+    (asserts! (is-eq (get owner file) tx-sender) err-unauthorized)
+
+    ;; Ensure the recipient is not the same as the owner
+    (asserts! (not (is-eq recipient (get owner file))) err-invalid-recipient)
+
+    ;; Update the file's permissions
+    (map-set file-permissions
+      { file-id: file-id, user: recipient }
+      { permission: permission }
+    )
+
+    ;; Return success
+    (ok true)
+  )
+)
+
+(define-public (revoke-permission (file-id uint) (user principal))
+  (let
+    (
+      (file (unwrap! (map-get? files { file-id: file-id }) err-not-found))
+    )
+    ;; Check if file-id is valid
+    (asserts! (and (> file-id u0) (<= file-id (var-get total-files))) err-not-found)
+
+    ;; Ensure the caller is the file's owner
+    (asserts! (is-eq (get owner file) tx-sender) err-unauthorized)
+
+    ;; Ensure the user is not the same as the owner
+    (asserts! (not (is-eq user (get owner file))) err-invalid-recipient)
+
+    ;; Remove the permission
+    (map-delete file-permissions { file-id: file-id, user: user })
+
+    ;; Return success
+    (ok true)
+  )
+)
+
+;; read-only functions
+(define-read-only (get-total-files)
+  (ok (var-get total-files))
+)
+
+(define-read-only (get-file-info (file-id uint))
+  (match (map-get? files { file-id: file-id })
+    file-info (ok file-info)
+    err-not-found
+  )
+)
