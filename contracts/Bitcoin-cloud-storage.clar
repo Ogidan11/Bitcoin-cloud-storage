@@ -77,3 +77,50 @@
     (ok file-id)
   )
 )
+
+
+(define-public (update-file (file-id uint) (new-name (string-ascii 64)) (new-size uint))
+  (let
+    (
+      (file (unwrap! (map-get? files { file-id: file-id }) err-not-found))
+    )
+    (asserts! (file-exists file-id) err-not-found)
+    (asserts! (is-eq (get owner file) tx-sender) err-unauthorized)
+    (asserts! (> (len new-name) u0) err-invalid-name)
+    (asserts! (< (len new-name) u65) err-invalid-name)
+    (asserts! (> new-size u0) err-invalid-size)
+    (asserts! (< new-size u1000000000) err-invalid-size)
+    (map-set files
+      { file-id: file-id }
+      (merge file { name: new-name, size: new-size })
+    )
+    (ok true)
+  )
+)
+
+(define-public (delete-file (file-id uint))
+  (let
+    (
+      (file (unwrap! (map-get? files { file-id: file-id }) err-not-found))
+    )
+    (asserts! (file-exists file-id) err-not-found)
+    (asserts! (is-eq (get owner file) tx-sender) err-unauthorized)
+    (map-delete files { file-id: file-id })
+    (ok true)
+  )
+)
+
+(define-public (transfer-file-ownership (file-id uint) (new-owner principal))
+  (let
+    (
+      (file (unwrap! (map-get? files { file-id: file-id }) err-not-found))
+    )
+    (asserts! (file-exists file-id) err-not-found)
+    (asserts! (is-eq (get owner file) tx-sender) err-unauthorized)
+    (map-set files
+      { file-id: file-id }
+      (merge file { owner: new-owner })
+    )
+    (ok true)
+  )
+)
